@@ -1,0 +1,43 @@
+# Jayhansuh Homebrew Tap
+
+This tap contains Homebrew formulas for Jayhansuh tools.
+
+## Installation
+
+```bash
+# Add the tap
+brew tap jayhansuh/tap
+
+# Install tmux-agent
+brew install tmux-agent
+```
+
+## One-liner Installation
+
+```bash
+brew install jayhansuh/tap/tmux-agent
+```
+
+## Available Formulas
+
+### tmux-agent
+
+Agent-friendly tmux wrapper with safety controls.
+
+```bash
+# Install
+brew install jayhansuh/tap/tmux-agent
+
+# Update
+brew upgrade tmux-agent
+
+# Uninstall
+brew uninstall tmux-agent
+```
+
+## Development
+
+To test locally:
+```bash
+brew install --build-from-source ./Formula/tmux-agent.rb
+```

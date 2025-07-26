@@ -1,0 +1,47 @@
+[package]
+name = "aany"
+version = "0.1.0"
+edition = "2021"
+authors = []
+description = "Agent Anywhere - Unified CLI for AI agent management"
+homepage = "https://agent-anywhere.com"
+repository = "https://github.com/ironluffy/agent-anywhere"
+license = "MIT"
+
+[[bin]]
+name = "aany"
+path = "src/main.rs"
+
+[dependencies]
+# CLI framework
+clap = { version = "4.4", features = ["derive", "env"] }
+clap_complete = "4.4"
+
+# Local dependencies
+aany-tmux = { path = "../aany-tmux" }
+aany-pool = { path = "../aany-pool" }
+
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+serde_json = "1.0"
+
+# Terminal UI (for future TUI features)
+crossterm = "0.27"
+ratatui = "0.25"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Utils
+directories = "5.0"
+which = "6.0"
+chrono = { version = "0.4", features = ["serde"] }

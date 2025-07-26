@@ -1,0 +1,40 @@
+[workspace]
+members = [
+    "aany",
+    "aany-tmux", 
+    "aany-pool",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = []
+license = "MIT"
+repository = "https://github.com/ironluffy/agent-anywhere"
+homepage = "https://agent-anywhere.com"
+
+[workspace.dependencies]
+# Common dependencies used across multiple crates
+tokio = { version = "1.35", features = ["full"] }
+anyhow = "1.0"
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+serde_json = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Profile settings for optimized builds
+[profile.release]
+lto = true
+opt-level = 3
+codegen-units = 1
+strip = true
+
+[profile.dev]
+opt-level = 0
+
+[profile.dev.package."*"]
+opt-level = 3
