@@ -1,114 +1,63 @@
-# Agent Anywhere
+# 🚀 Agent Anywhere - The Docker for AI Agents
 
-A comprehensive system for managing AI agents with tmux integration and safety controls.
+## What We Do
 
-## 🚀 Quick Start
+"Install any AI agents (Claude, GPT, Gemini, etc.) anywhere in seconds and control them from anywhere"
 
-### Prerequisites
+## ⚡ Quick Start
 
-- **tmux**: `apt install tmux` (Ubuntu) or `brew install tmux` (macOS)
-- **Python**: 3.8+
+requirements: (Python 3.10+, sh, or brew) and tmux
 
-### Install
+> **Ready in 30 seconds:**
 
+### Option 1: pip
 ```bash
-# Download pre-built binary (macOS ARM64)
-curl -L https://github.com/ironluffy/agent-anywhere/releases/download/v0.1.0/aany-v0.1.0-Darwin-arm64.tar.gz | tar xz
-sudo mv aany /usr/local/bin/
-
-# Or build from source (requires Rust)
-cargo install --path aany
+pip install agent-anywhere
 ```
 
-### First Steps
-
+### Option 2: curl
 ```bash
-# Using unified CLI (aany)
-aany pool create my-bot        # Create an agent
-aany pool start my-bot         # Start the agent
-aany pool ui                   # Interactive UI
-
-# Using tmux commands directly
-aany tmux new my-session       # Create tmux session
-aany tmux monitor my-session   # Monitor (read-only)
-aany tmux list                 # List all sessions
-
-# Get help
-aany --help
-aany pool --help
-aany tmux --help
+curl -sSL https://agent-anywhere.io/install.sh | sh
 ```
 
-## 📦 Components
-
-### 1. **aany** - Unified CLI
-- Single entry point: `aany <command>`
-- Manages both tmux sessions and agent pools
-- Consistent interface across all features
-
-### 2. **aany-tmux** - TMux Integration
-- Safe tmux session management
-- Human interference detection
-- Read-only monitoring mode
-- Formerly `tmux-agent-proxy`
-
-### 3. **aany-pool** - Agent Pool Manager
-- Manage multiple AI agents
-- Agent lifecycle management
-- Metadata and task tracking
-- Template system
-- Interactive TUI with `aany pool ui`
-
-### 4. **python/** - Python Package
-- Works with existing `tmux-agent` commands
-- Pre-built wheels for easy installation
-- No Rust compilation required
-
-## 💡 Key Features
-
-- **Agent Pool Management**: Create, start, stop, and manage multiple AI agents
-- **TMux Safety**: Prevents accidental interference with AI sessions
-- **Logging**: Comprehensive session and event logging
-- **Templates**: Pre-configured agent types (claude, general, research, custom)
-- **Interactive UI**: Terminal UI for easy agent management
-
-## 🛠️ Other Install Options
-
-<details>
-<summary>Build from source</summary>
-
+### Option 3: brew
 ```bash
-# Clone and build with Rust
-git clone https://github.com/ironluffy/agent-anywhere.git
-cd agent-anywhere
-cargo build --release
-
-# Binary will be at target/release/aany
+brew install agent-anywhere
 ```
-</details>
 
-<details>
-<summary>Add to Python project</summary>
-
+### Then run:
 ```bash
-# In pyproject.toml
-[project]
-dependencies = [
-    "aany @ git+https://github.com/ironluffy/agent-anywhere.git#subdirectory=python",
-]
+aany
 ```
-</details>
 
-## 📚 Documentation
+---
 
-Full documentation coming soon. For now, use `aany --help` for command reference.
+## What's Special?
 
-## Requirements
+### 🌱 Plant Anywhere
+- Deploy with a single command and that's it.
+- Laptop, server, or even a Docker container, it doesn't matter.
+- Works on different operating systems, and even different devices.
 
-- Python 3.8+
-- tmux
-- Rust (only for building from source)
+### 🧠 Learn Anywhere
+- Watches how you work (privately on your machine)
+- Put your agents on autopilot to do what you would do.
+- Gets smarter with every task you complete.
 
-## License
+### 🎮 Control Anywhere (cloud sync optional)
+- Access your deployed agents from any device (including mobile web)
+- Voice commands and one-click control workflow
+- Secure tunnel to your own agents, not cloud services
 
-MIT
+### 🏪 Agent Marketplace
+Download and share pre-built agent templates:
+- **"AWS Cost Optimizer"** - analyzes and reduces your cloud bills (runs entirely on your machine)
+- **"GPU Memory Optimizer"** - monitors your GPU memory usage and optimizes it
+- **"Ultimate Planning Executioner"**
+  - Read your Notion and understand existing development timelines
+  - Assign tasks to sub-agents and manage them
+  - Ask you for high-level guidance occasionally through Slack DMs
+
+## Our Mission
+
+Make AI agents as easy to use as Docker containers - install on YOUR infrastructure, control them from everywhere without the overwhelm of managing multiple agents.
