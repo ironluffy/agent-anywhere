@@ -6,7 +6,7 @@ Python wrapper for tmux-agent - an agent-friendly tmux wrapper with safety contr
 
 ```bash
 # Pre-built wheel (instant installation)
-pip install https://github.com/jayhansuh/agent-anywhere/raw/genesis/wheels/tmux_agent-0.3.0-py3-none-any.whl
+pip install https://github.com/ironluffy/agent-anywhere/raw/genesis/wheels/tmux_agent-0.3.0-py3-none-any.whl
 
 # From PyPI (future)
 pip install tmux-agent
@@ -44,20 +44,20 @@ tmux-agent help
 
 ```bash
 # From GitHub release
-pip install https://github.com/jayhansuh/agent-anywhere/raw/genesis/wheels/tmux_agent-0.3.0-py3-none-any.whl
+pip install https://github.com/ironluffy/agent-anywhere/raw/genesis/wheels/tmux_agent-0.3.0-py3-none-any.whl
 
 # From future GitHub releases with platform-specific wheels
-pip install https://github.com/jayhansuh/agent-anywhere/releases/download/v0.3.0/tmux_agent-0.3.0-py3-none-any.whl
+pip install https://github.com/ironluffy/agent-anywhere/releases/download/v0.3.0/tmux_agent-0.3.0-py3-none-any.whl
 ```
 
 ### From Source (Requires Rust)
 
 ```bash
 # Install from git (will compile Rust binary)
-pip install git+ssh://git@github.com/jayhansuh/agent-anywhere.git#subdirectory=python
+pip install git+ssh://git@github.com/ironluffy/agent-anywhere.git#subdirectory=python
 
 # For development
-git clone git@github.com:jayhansuh/agent-anywhere.git
+git clone git@github.com:ironluffy/agent-anywhere.git
 cd agent-anywhere/python
 pip install -e .
 ```
@@ -66,12 +66,12 @@ pip install -e .
 
 ```bash
 # Using uv
-uv add git+ssh://git@github.com/jayhansuh/agent-anywhere.git#subdirectory=python
+uv add git+ssh://git@github.com/ironluffy/agent-anywhere.git#subdirectory=python
 
 # In pyproject.toml
 [project]
 dependencies = [
-    "tmux-agent @ git+ssh://git@github.com/jayhansuh/agent-anywhere.git#subdirectory=python",
+    "tmux-agent @ git+ssh://git@github.com/ironluffy/agent-anywhere.git#subdirectory=python",
 ]
 ```
 

@@ -6,8 +6,8 @@ setup(
     name="tmux-agent",
     version="0.3.0",
     description="Agent-friendly tmux wrapper with safety controls",
-    author="Jay Suh",
-    author_email="jayhansuh@gmail.com",
+    author="",
+    author_email="",
     packages=find_packages(),
     package_data={
         "tmux_agent": ["bin/*"],
@@ -21,5 +21,5 @@ setup(
         ],
     },
     python_requires=">=3.8",
-    url="https://github.com/jayhansuh/agent-anywhere",
+    url="https://github.com/ironluffy/agent-anywhere",
 )

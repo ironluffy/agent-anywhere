@@ -52,14 +52,23 @@ impl PoolManager {
         while let Some(entry) = entries.next_entry().await? {
             if entry.file_type().await?.is_dir() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                match Agent::load(name.clone(), self.root_path.clone()).await {
-                    Ok(agent) => {
-                        self.agents.insert(name, agent);
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to load agent {}: {}", name, e);
+                
+                // Check if metadata exists before trying to load
+                let agent_dir = self.root_path.join("agents").join(&name);
+                let new_metadata_path = agent_dir.join("metadata").join("agent.yaml");
+                let old_metadata_path = agent_dir.join(".agent.yaml");
+                
+                if new_metadata_path.exists() || old_metadata_path.exists() {
+                    match Agent::load(name.clone(), self.root_path.clone()).await {
+                        Ok(agent) => {
+                            self.agents.insert(name, agent);
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to load agent {}: {}", name, e);
+                        }
                     }
                 }
+                // Silently skip agents without metadata files
             }
         }
         

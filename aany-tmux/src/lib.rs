@@ -9,12 +9,16 @@ pub mod session;
 pub mod async_proxy;
 pub mod safe_proxy;
 pub mod interference;
+pub mod modules;
+pub mod modular_proxy;
+pub mod proto;
 
 // Re-export for convenience
 pub use session::TmuxSession;
 pub use async_proxy::{AsyncTmuxProxy, PaneMonitor};
 pub use safe_proxy::{SafeTmuxProxy, SafetyConfig, PaneHealth, HealthStatus};
 pub use interference::{InterferenceDetector, InterferenceEvent, RecoveryReport};
+pub use modular_proxy::{ModularTmuxProxy, ModularProxyConfig};
 
 // Our TmuxProxy struct - this will hold the state for a single tmux pane
 // In Rust, we define data structures with 'struct'

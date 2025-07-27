@@ -31,8 +31,8 @@ if [[ "$OS" == "macos" ]]; then
         exit 1
     fi
     
-    brew install jayhansuh/tap/tmux-agent || {
-        brew tap jayhansuh/tap
+    brew install ironluffy/tap/tmux-agent || {
+        brew tap ironluffy/tap
         brew install tmux-agent
     }
     
@@ -50,7 +50,7 @@ elif [[ "$OS" == "linux" ]]; then
     
     # Clone repository
     echo "📦 Downloading tmux-agent..."
-    git clone --branch genesis --depth 1 https://github.com/jayhansuh/agent-anywhere.git
+    git clone --branch genesis --depth 1 https://github.com/ironluffy/agent-anywhere.git
     
     # Run the auto installer
     cd agent-anywhere/aany-tmux

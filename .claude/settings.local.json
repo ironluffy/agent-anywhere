@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod:*)",
+      "Bash(./demo_typing.sh:*)",
+      "Bash(find:*)",
+      "Bash(tmux list-sessions:*)",
+      "Bash(tmux capture-pane:*)",
+      "Bash(tmux list-windows:*)",
+      "Bash(ls:*)",
+      "Bash(curl:*)",
+      "Bash(source:*)",
+      "Bash(python test:*)",
+      "Bash(pip install:*)",
+      "Bash(cargo check:*)",
+      "Bash(cargo run:*)",
+      "Bash(./compile_proto.sh)",
+      "Bash(tmux send-keys:*)",
+      "Bash(python:*)",
+      "Bash(PYTHONPATH=/Users/hsuh/Gitrepo/agent-anywhere/aany-hub/src python -m aany_hub.main)",
+      "Bash(tmux new-window:*)",
+      "Bash(grep:*)",
+      "Bash(cargo build:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(tmux kill-server:*)",
+      "Bash(true)",
+      "Bash(./aany-tmux/create-agent-with-logging.sh:*)",
+      "Bash(./run_ultimate_test.sh:*)",
+      "Bash(./auto_ultimate_test.sh:*)",
+      "Bash(tmux new-session:*)",
+      "Bash(tmux display-message:*)",
+      "Bash(tmux list-panes:*)"
+    ],
+    "deny": []
+  }
+}

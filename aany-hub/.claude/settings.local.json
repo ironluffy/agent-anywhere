@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(ls:*)",
+      "Bash(source:*)",
+      "Bash(python:*)",
+      "Bash(curl:*)",
+      "Bash(./ULTIMATE_TEST_VERIFIED.sh:*)",
+      "Bash(tmux capture-pane:*)",
+      "Bash(cat:*)",
+      "Bash(tmux send-keys:*)",
+      "Bash(./stop_hub.sh:*)",
+      "Bash(./start_hub_background.sh:*)",
+      "Bash(kill:*)"
+    ],
+    "deny": []
+  }
+}

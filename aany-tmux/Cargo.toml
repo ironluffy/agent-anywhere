@@ -15,6 +15,37 @@ crate-type = ["cdylib", "rlib"]  # cdylib for Python FFI, rlib for Rust usage
 [dependencies]
 # For async operations
 tokio = { version = "1.35", features = ["full"] }
+async-trait = "0.1"
+
+# For module system
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# For logging
+tracing = "0.1"
+chrono = "0.4"
+
+# For gRPC (hub connector)
+tonic = "0.10"
+prost = "0.12"
+
+# For CLI
+clap = { version = "4.0", features = ["derive"] }
 
 # We'll add PyO3 later when you're ready for Python bindings
 # pyo3 = { version = "0.20", features = ["extension-module"] }
+
+[build-dependencies]
+tonic-build = "0.10"
+
+[features]
+default = []
+hub-connector = []
+
+[[bin]]
+name = "tmux-agent"
+path = "src/bin/tmux-agent.rs"
+
+[[bin]]
+name = "tmux-agent-modular"
+path = "src/bin/tmux-agent-modular.rs"

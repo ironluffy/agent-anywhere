@@ -50,6 +50,24 @@ pub enum TmuxCommands {
         /// Session name
         name: String,
     },
+    
+    /// Create a new modular agent with logging enabled
+    Agent {
+        /// Agent name/ID
+        name: String,
+        
+        /// Hub URL (defaults to localhost:50052)
+        #[arg(long, default_value = "localhost:50052")]
+        hub_url: String,
+        
+        /// Disable logging to hub
+        #[arg(long)]
+        no_logging: bool,
+        
+        /// Additional modules to enable (comma-separated)
+        #[arg(long)]
+        modules: Option<String>,
+    },
 }
 
 pub async fn handle_command(cmd: TmuxCommands) -> Result<()> {
@@ -70,24 +88,65 @@ pub async fn handle_command(cmd: TmuxCommands) -> Result<()> {
             }
             
             // Send warning message to the session
-            let warning = format!(
-                r#"clear && echo -e '\033[1;33m
-╔══════════════════════════════════════╗
-║  ⚠️  AGENT CONTROLLED SESSION  ⚠️   ║
-║                                      ║
-║  Session: {}
-║  This tmux session is managed by     ║
-║  an automated agent.                 ║
-║                                      ║
-║  Manual changes may disrupt agent    ║
-║  operations!                         ║
-╚══════════════════════════════════════╝
-\033[0m'"#, session_name
-            );
+            // Remove the warning variable since we're not using it anymore
             
-            Command::new("tmux")
-                .args(&["send-keys", "-t", &session_name, &warning, "Enter"])
-                .output()?;
+            // Don't send any commands to the agent - keep it clean
+            
+//             // ENABLE LOGGING BY DEFAULT!
+//             let hub_url = std::env::var("AANY_HUB_URL").unwrap_or_else(|_| "localhost:50052".to_string());
+            
+//             // Set up environment for logging
+//             let setup_logging = format!(
+//                 r#"
+// export AANY_AGENT_ID='{}'
+// export AANY_HUB_URL='{}'
+// export AANY_LOGGING_ENABLED=true
+// echo '🔌 Agent {} connected to hub at {}'
+// echo '📊 Logging is ENABLED by default'
+// echo '💡 To disable logging: export AANY_LOGGING_ENABLED=false'
+// "#, name, hub_url, name, hub_url
+//             );
+            
+//             Command::new("tmux")
+//                 .args(&["send-keys", "-t", &session_name, &setup_logging, "C-m"])
+//                 .output()?;
+            
+//             // Start BOTH loggers for comprehensive logging
+//             let logger_script = "/Users/hsuh/Gitrepo/agent-anywhere/aany-tmux/tmux-logger.sh";
+//             let interaction_logger_script = "/Users/hsuh/Gitrepo/agent-anywhere/aany-tmux/tmux-interaction-logger.sh";
+            
+//             // Start the original tmux logger
+//             if std::path::Path::new(logger_script).exists() {
+//                 Command::new("bash")
+//                     .args(&[logger_script, &session_name, &name])
+//                     .env("AANY_HUB_URL", &hub_url)
+//                     .env("GRPC_ENABLE_FORK_SUPPORT", "1")
+//                     .env("GRPC_POLL_STRATEGY", "poll")
+//                     .stdout(std::process::Stdio::null())
+//                     .stderr(std::process::Stdio::null())
+//                     .spawn()
+//                     .ok();
+//             }
+            
+//             // Start the interaction logger
+//             if std::path::Path::new(interaction_logger_script).exists() {
+//                 Command::new("bash")
+//                     .args(&[interaction_logger_script, &session_name, &name])
+//                     .env("AANY_HUB_URL", &hub_url)
+//                     .env("AANY_LOGGING_ENABLED", "true")
+//                     .env("GRPC_ENABLE_FORK_SUPPORT", "1")
+//                     .env("GRPC_POLL_STRATEGY", "poll")
+//                     .stdout(std::process::Stdio::null())
+//                     .stderr(std::process::Stdio::null())
+//                     .spawn()
+//                     .ok();
+//                 println!("✅ Agent created with comprehensive logging enabled to {}", hub_url);
+//                 println!("📊 View logs at: http://localhost:8090");
+//                 println!("📝 Interaction logs saved to: ~/.aany/agents/{}/logs/", name);
+//             } else {
+//                 println!("✅ Agent created with basic logging enabled");
+//                 println!("📊 View logs at: http://localhost:8090");
+            // }
             
             if !detach {
                 // Attach to the session
@@ -226,6 +285,46 @@ pub async fn handle_command(cmd: TmuxCommands) -> Result<()> {
             }
             
             println!("✅ Cleanup complete (removed {} extra panes)", panes.len().saturating_sub(1));
+            
+            Ok(())
+        }
+        
+        TmuxCommands::Agent { name, hub_url, no_logging, modules } => {
+            println!("Creating modular agent: {}", name);
+            let session_name = format!("agent-{}", name);
+            
+            // Create new tmux session
+            let output = Command::new("tmux")
+                .args(&["new-session", "-d", "-s", &session_name])
+                .output()?;
+                
+            if !output.status.success() {
+                let error = String::from_utf8_lossy(&output.stderr);
+                anyhow::bail!("Failed to create session: {}", error);
+            }
+            
+            // Build the modular agent command
+            let mut agent_cmd = format!("aany-tmux-modular --session {} --agent-id {}", session_name, name);
+            
+            if !no_logging {
+                agent_cmd.push_str(&format!(" --enable-hub --hub-url {}", hub_url));
+                println!("✅ Logging enabled to hub: {}", hub_url);
+            }
+            
+            if let Some(module_list) = modules {
+                agent_cmd.push_str(&format!(" --modules {}", module_list));
+            }
+            
+            // Send the command to start the modular agent
+            Command::new("tmux")
+                .args(&["send-keys", "-t", &session_name, &agent_cmd, "C-m"])
+                .output()?;
+            
+            println!("✅ Modular agent created: {}", session_name);
+            if !no_logging {
+                println!("📊 Logs will be sent to: {}", hub_url);
+            }
+            println!("👁️  Monitor with: aany tmux monitor {}", name);
             
             Ok(())
         }

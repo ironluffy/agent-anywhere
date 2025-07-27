@@ -1,12 +1,12 @@
-# Jayhansuh Homebrew Tap
+# Ironluffy Homebrew Tap
 
-This tap contains Homebrew formulas for Jayhansuh tools.
+This tap contains Homebrew formulas for Ironluffy tools.
 
 ## Installation
 
 ```bash
 # Add the tap
-brew tap jayhansuh/tap
+brew tap ironluffy/tap
 
 # Install tmux-agent
 brew install tmux-agent
@@ -15,7 +15,7 @@ brew install tmux-agent
 ## One-liner Installation
 
 ```bash
-brew install jayhansuh/tap/tmux-agent
+brew install ironluffy/tap/tmux-agent
 ```
 
 ## Available Formulas
@@ -26,7 +26,7 @@ Agent-friendly tmux wrapper with safety controls.
 
 ```bash
 # Install
-brew install jayhansuh/tap/tmux-agent
+brew install ironluffy/tap/tmux-agent
 
 # Update
 brew upgrade tmux-agent

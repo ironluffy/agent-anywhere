@@ -1,16 +1,16 @@
 class TmuxAgent < Formula
   desc "Agent-friendly tmux wrapper with safety controls"
-  homepage "https://github.com/jayhansuh/agent-anywhere"
+  homepage "https://github.com/ironluffy/agent-anywhere"
   license "MIT"
   
   # Use different installation methods
   if OS.mac?
     # For macOS, use pre-built universal binary
-    url "https://github.com/jayhansuh/agent-anywhere/releases/download/v0.2.0/tmux-agent-v0.2.0-macos.tar.gz"
+    url "https://github.com/ironluffy/agent-anywhere/releases/download/v0.2.0/tmux-agent-v0.2.0-macos.tar.gz"
     sha256 "PLACEHOLDER_SHA256_MACOS"  # Update when release is created
   else
     # For Linux, build from source
-    url "https://github.com/jayhansuh/agent-anywhere/archive/refs/tags/v0.2.0.tar.gz"
+    url "https://github.com/ironluffy/agent-anywhere/archive/refs/tags/v0.2.0.tar.gz"
     sha256 "PLACEHOLDER_SHA256_SOURCE"  # Update when release is created
     depends_on "rust" => :build
   end

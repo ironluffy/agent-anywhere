@@ -1,0 +1,13 @@
+{
+  "agent_id": "terminal-test-agent",
+  "modules": {
+    "hub_connector": {
+      "enabled": true,
+      "hub_url": "localhost:50052"
+    },
+    "terminal_broadcaster": {
+      "enabled": true,
+      "hub_url": "localhost:50052"
+    }
+  }
+}

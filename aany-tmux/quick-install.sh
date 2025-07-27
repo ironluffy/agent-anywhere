@@ -13,7 +13,7 @@ cd "$TEMP_DIR"
 
 # Clone or download the project
 if command -v git &> /dev/null; then
-    git clone https://github.com/jayhansuh/agent-anywhere.git
+    git clone https://github.com/ironluffy/agent-anywhere.git
     cd agent-anywhere/aany-tmux
 else
     echo "❌ Error: git not found. Please install git first."

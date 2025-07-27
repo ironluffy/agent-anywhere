@@ -1,0 +1,127 @@
+syntax = "proto3";
+
+package aany_hub;
+
+// Agent to Hub communication service
+service AgentHub {
+  // Send log entries
+  rpc SendLogs(stream LogEntry) returns (LogResponse);
+  
+  // Register agent
+  rpc RegisterAgent(AgentInfo) returns (RegistrationResponse);
+  
+  // Heartbeat
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+  
+  // Terminal session management
+  rpc CreateTerminalSession(CreateTerminalRequest) returns (TerminalSessionResponse);
+  rpc AttachTerminalSession(AttachTerminalRequest) returns (TerminalSessionResponse);
+  rpc TerminalIO(stream TerminalData) returns (stream TerminalData);
+  rpc ListTerminalSessions(ListTerminalSessionsRequest) returns (ListTerminalSessionsResponse);
+  rpc CloseTerminalSession(CloseTerminalRequest) returns (CloseTerminalResponse);
+}
+
+// Log entry from agent
+message LogEntry {
+  string agent_id = 1;
+  string timestamp = 2;
+  string level = 3;      // INFO, WARN, ERROR, DEBUG
+  string message = 4;
+  string component = 5;  // tmux, executor, etc
+  map<string, string> metadata = 6;
+}
+
+// Agent information
+message AgentInfo {
+  string agent_id = 1;
+  string version = 2;
+  string hostname = 3;
+  map<string, string> capabilities = 4;
+}
+
+// Registration response
+message RegistrationResponse {
+  bool success = 1;
+  string message = 2;
+  string session_id = 3;
+}
+
+// Log response
+message LogResponse {
+  bool success = 1;
+  int32 entries_received = 2;
+}
+
+// Heartbeat
+message HeartbeatRequest {
+  string agent_id = 1;
+  string session_id = 2;
+}
+
+message HeartbeatResponse {
+  bool alive = 1;
+  string server_time = 2;
+}
+
+// Terminal session messages
+message CreateTerminalRequest {
+  string agent_id = 1;
+  string tmux_session_name = 2;
+  int32 window = 3;
+  int32 pane = 4;
+  map<string, string> metadata = 5;
+}
+
+message AttachTerminalRequest {
+  string agent_id = 1;
+  string session_id = 2;
+  string tmux_session_name = 3;
+}
+
+message TerminalSessionResponse {
+  bool success = 1;
+  string session_id = 2;
+  string message = 3;
+  TerminalInfo terminal_info = 4;
+}
+
+message TerminalInfo {
+  string session_id = 1;
+  string tmux_session_name = 2;
+  int32 rows = 3;
+  int32 cols = 4;
+  string status = 5;
+}
+
+message TerminalData {
+  string session_id = 1;
+  oneof data {
+    string input = 2;      // Input from user (hub->agent)
+    string output = 3;     // Output from terminal (agent->hub)
+    TerminalResize resize = 4;
+    string command = 5;    // Special commands
+  }
+  int64 timestamp = 6;
+}
+
+message TerminalResize {
+  int32 rows = 1;
+  int32 cols = 2;
+}
+
+message ListTerminalSessionsRequest {
+  string agent_id = 1;
+}
+
+message ListTerminalSessionsResponse {
+  repeated TerminalInfo sessions = 1;
+}
+
+message CloseTerminalRequest {
+  string session_id = 1;
+}
+
+message CloseTerminalResponse {
+  bool success = 1;
+  string message = 2;
+}

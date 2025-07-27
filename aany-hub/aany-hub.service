@@ -1,0 +1,15 @@
+[Unit]
+Description=aany-hub - Agent Anywhere Hub Server
+After=network.target
+
+[Service]
+Type=simple
+User=%USER%
+WorkingDirectory=%WORKDIR%
+Environment="PATH=%WORKDIR%/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=%WORKDIR%/.venv/bin/python -m src.aany_hub.main
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

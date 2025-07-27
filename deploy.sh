@@ -113,20 +113,20 @@ prepare_release() {
 ### Python Package (Recommended)
 \`\`\`bash
 # From GitHub Release wheel (no compilation needed!)
-pip install https://github.com/jayhansuh/agent-anywhere/releases/download/v$VERSION/tmux_agent-$VERSION-py3-none-any.whl
+pip install https://github.com/ironluffy/agent-anywhere/releases/download/v$VERSION/tmux_agent-$VERSION-py3-none-any.whl
 
 # From source (requires Rust)
-pip install git+https://github.com/jayhansuh/agent-anywhere.git@v$VERSION#subdirectory=python
+pip install git+https://github.com/ironluffy/agent-anywhere.git@v$VERSION#subdirectory=python
 \`\`\`
 
 ### Rust Binary
 \`\`\`bash
 # macOS
-curl -L https://github.com/jayhansuh/agent-anywhere/releases/download/v$VERSION/tmux-agent-v$VERSION-macos.tar.gz | tar xz
+curl -L https://github.com/ironluffy/agent-anywhere/releases/download/v$VERSION/tmux-agent-v$VERSION-macos.tar.gz | tar xz
 sudo mv tmux-agent /usr/local/bin/
 
 # Linux
-curl -L https://github.com/jayhansuh/agent-anywhere/releases/download/v$VERSION/tmux-agent-v$VERSION-linux-x86_64.tar.gz | tar xz
+curl -L https://github.com/ironluffy/agent-anywhere/releases/download/v$VERSION/tmux-agent-v$VERSION-linux-x86_64.tar.gz | tar xz
 sudo mv tmux-agent /usr/local/bin/
 \`\`\`
 
@@ -210,7 +210,7 @@ case $choice in
         git push origin $CURRENT_BRANCH
         git push origin v$VERSION
         echo "✅ Pushed! Check GitHub Actions for wheel building."
-        echo "   https://github.com/jayhansuh/agent-anywhere/actions"
+        echo "   https://github.com/ironluffy/agent-anywhere/actions"
         ;;
     7)
         echo "📦 Publishing to PyPI..."

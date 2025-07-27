@@ -1,0 +1,31 @@
+{
+  "modules": {
+    "hub_connector": {
+      "enabled": true,
+      "hub_url": "localhost:50052",
+      "log_level": "INFO",
+      "batch_size": 10,
+      "flush_interval_ms": 1000
+    },
+    "autocorrect": {
+      "enabled": true,
+      "corrections": {
+        "ehco": "echo",
+        "gti": "git",
+        "pyhton": "python",
+        "pytohn": "python",
+        "teh": "the",
+        "adn": "and"
+      }
+    }
+  },
+  "agent": {
+    "default_logging": true,
+    "hub_url": "localhost:50052",
+    "heartbeat_interval_seconds": 30,
+    "metadata": {
+      "platform": "macos",
+      "version": "0.1.0"
+    }
+  }
+}

@@ -4,6 +4,7 @@ use aany_pool::PoolManager;
 use aany_pool::metadata::AgentStatus;
 use std::path::PathBuf;
 use directories::BaseDirs;
+use std::env;
 
 #[derive(Subcommand)]
 pub enum PoolCommands {
@@ -179,9 +180,7 @@ pub async fn handle_command(cmd: PoolCommands) -> Result<()> {
             
             if attach {
                 let session_name = format!("agent-{}", name);
-                std::process::Command::new("tmux")
-                    .args(&["attach-session", "-t", &session_name])
-                    .status()?;
+                attach_to_tmux_session(&session_name, false)?;
             }
         }
         
@@ -197,23 +196,14 @@ pub async fn handle_command(cmd: PoolCommands) -> Result<()> {
             let agent = manager.get_agent(&name)?;
             let session_name = &agent.metadata.tmux.session_name;
             
-            let mut cmd = std::process::Command::new("tmux");
-            cmd.args(&["attach-session", "-t", session_name]);
-            
-            if readonly {
-                cmd.arg("-r");
-            }
-            
-            cmd.status()?;
+            attach_to_tmux_session(session_name, readonly)?;
         }
         
         PoolCommands::Monitor { name } => {
             let agent = manager.get_agent(&name)?;
             let session_name = &agent.metadata.tmux.session_name;
             
-            std::process::Command::new("tmux")
-                .args(&["attach-session", "-r", "-t", session_name])
-                .status()?;
+            attach_to_tmux_session(session_name, true)?;
         }
         
         PoolCommands::Status { name } => {
@@ -326,9 +316,7 @@ pub async fn handle_command(cmd: PoolCommands) -> Result<()> {
             
             if attach {
                 let session_name = format!("agent-{}", name);
-                std::process::Command::new("tmux")
-                    .args(&["attach-session", "-t", &session_name])
-                    .status()?;
+                attach_to_tmux_session(&session_name, false)?;
             }
         }
     }
@@ -344,8 +332,52 @@ fn get_pool_root() -> Result<PathBuf> {
     
     // Use default in user's home directory
     if let Some(base_dirs) = BaseDirs::new() {
-        Ok(base_dirs.home_dir().join(".aany").join("pool"))
+        Ok(base_dirs.home_dir().join(".aany"))
     } else {
-        Ok(PathBuf::from("./.aany/pool"))
+        // Fallback to home directory
+        Ok(std::env::var("HOME")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .join(".aany"))
     }
+}
+
+/// Check if we're already inside a tmux session
+fn is_inside_tmux() -> bool {
+    env::var("TMUX").is_ok()
+}
+
+/// Attach to a tmux session, handling nested tmux sessions
+fn attach_to_tmux_session(session_name: &str, readonly: bool) -> Result<()> {
+    if is_inside_tmux() {
+        // If we're already in tmux, switch to the target session instead of attaching
+        println!("Already in tmux, switching to session: {}", session_name);
+        
+        // Get current session name to set as return session
+        let current_session = std::process::Command::new("tmux")
+            .args(&["display-message", "-p", "#S"])
+            .output()?;
+        let current_session_name = String::from_utf8_lossy(&current_session.stdout).trim().to_string();
+        
+        // Set the return session environment variable in the target session
+        std::process::Command::new("tmux")
+            .args(&["set-environment", "-t", session_name, "AANY_RETURN_SESSION", &current_session_name])
+            .status()?;
+        
+        // Switch to the target session
+        std::process::Command::new("tmux")
+            .args(&["switch-client", "-t", session_name])
+            .status()?;
+    } else {
+        // If we're not in tmux, attach normally
+        let mut cmd = std::process::Command::new("tmux");
+        cmd.args(&["attach-session", "-t", session_name]);
+        
+        if readonly {
+            cmd.arg("-r");
+        }
+        
+        cmd.status()?;
+    }
+    Ok(())
 }

@@ -90,7 +90,7 @@ fn print_version() {
     println!("{}", DESCRIPTION);
     println!("by {}", AUTHORS);
     println!();
-    println!("Repository: https://github.com/jayhansuh/agent-anywhere");
+    println!("Repository: https://github.com/ironluffy/agent-anywhere");
     println!("License: MIT");
 }
 
@@ -510,7 +510,7 @@ fn handle_update(_args: &[String]) {
         println!("To update tmux-agent:");
         println!();
         println!("Option 1 - Quick update:");
-        println!("   curl -sSL https://raw.githubusercontent.com/jayhansuh/agent-anywhere/genesis/tmux-agent-proxy/install-oneliner.sh | bash");
+        println!("   curl -sSL https://raw.githubusercontent.com/ironluffy/agent-anywhere/genesis/tmux-agent-proxy/install-oneliner.sh | bash");
         println!();
         println!("Option 2 - Manual update:");
         println!("   cd ~/agent-anywhere/tmux-agent-proxy");
@@ -518,6 +518,6 @@ fn handle_update(_args: &[String]) {
         println!("   ./install.sh");
         println!();
         println!("📝 Check releases at:");
-        println!("   https://github.com/jayhansuh/agent-anywhere/releases");
+        println!("   https://github.com/ironluffy/agent-anywhere/releases");
     }
 }

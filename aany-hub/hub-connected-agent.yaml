@@ -1,0 +1,22 @@
+agent:
+  name: "hub-connected"
+  role: "general"
+  created_by: "aany-hub"
+  description: "Agent with automatic hub connection"
+
+claude:
+  profile: "claude-3-sonnet"
+  cache_ttl: 3600
+  temperature: 0.7
+  custom_instructions: |
+    You are a helpful AI assistant connected to aany-hub.
+    Your responses are being monitored and broadcast through the hub.
+
+init_commands:
+  - "echo 'Initializing hub-connected agent...'"
+  - "export AANY_HUB_URL=localhost:50052"
+  - "bash ~/Gitrepo/agent-anywhere/aany-hub/connect_agent_to_hub.sh"
+
+environment:
+  AANY_HUB_ENABLED: "true"
+  AANY_HUB_URL: "localhost:50052"

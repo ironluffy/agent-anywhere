@@ -43,9 +43,9 @@ if [[ "$OS" == "macos" ]]; then
     
     # Install tmux-agent
     echo "📦 Installing tmux-agent..."
-    brew install jayhansuh/tap/tmux-agent || {
+    brew install ironluffy/tap/tmux-agent || {
         echo "⚠️  Direct formula install failed, trying tap first..."
-        brew tap jayhansuh/tap
+        brew tap ironluffy/tap
         brew install tmux-agent
     }
     
@@ -95,7 +95,7 @@ elif [[ "$OS" == "linux" ]]; then
     TEMP_DIR=$(mktemp -d)
     cd "$TEMP_DIR"
     
-    git clone --branch genesis https://github.com/jayhansuh/agent-anywhere.git
+    git clone --branch genesis https://github.com/ironluffy/agent-anywhere.git
     cd agent-anywhere/aany-tmux
     
     # Run the auto installer
