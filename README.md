@@ -58,6 +58,12 @@ Download and share pre-built agent templates:
   - Assign tasks to sub-agents and manage them
   - Ask you for high-level guidance occasionally through Slack DMs
 
+## 📖 Documentation
+
+- [Environment Variables Guide](docs/ENVIRONMENT_VARIABLES.md) - Complete reference for all configuration options
+- [Getting Started](docs/GETTING_STARTED.md) - Detailed setup instructions
+- [Agent Templates](docs/TEMPLATES.md) - Creating and using agent templates
+
 ## Our Mission
 
 Make AI agents as easy to use as Docker containers - install on YOUR infrastructure, control them from everywhere without the overwhelm of managing multiple agents.

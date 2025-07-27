@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 use std::path::PathBuf;
+use std::collections::HashMap;
 
 /// Get git user info in the format "Name <email>"
 pub fn get_git_user_info() -> String {
@@ -85,6 +86,8 @@ pub struct DefaultSettings {
     pub max_context_size: usize,
     pub auto_restart: bool,
     pub log_retention_days: u32,
+    #[serde(default)]
+    pub last_env_vars: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -142,6 +145,7 @@ impl Default for PoolConfig {
                 max_context_size: 200_000,
                 auto_restart: true,
                 log_retention_days: 30,
+                last_env_vars: HashMap::new(),
             },
             monitoring: MonitoringSettings {
                 health_check_interval: 60,

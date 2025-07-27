@@ -69,6 +69,8 @@ enum UIMode {
 
 struct CreateNewState {
     generated_name: String,
+    name_edit_mode: bool,          // Whether we're editing the name
+    name_edit_buffer: String,      // Buffer for name editing
     selected_type: usize,
     selected_field: CreateField,
     show_advanced: bool,
@@ -76,6 +78,10 @@ struct CreateNewState {
     selected_memo: usize,
     env_vars: Vec<(String, String)>,
     selected_env_var: usize,
+    show_env_vars: bool,           // Whether to show expanded env vars
+    // Environment variable editing
+    env_edit_mode: Option<usize>,  // Which env var is being edited
+    env_edit_buffer: String,       // Current edit buffer
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -153,6 +159,8 @@ impl PoolUI {
             mode: UIMode::List,
             create_state: CreateNewState {
                 generated_name: String::new(),
+                name_edit_mode: false,
+                name_edit_buffer: String::new(),
                 selected_type: 0, // Default to claude
                 selected_field: CreateField::Name,
                 show_advanced: false,
@@ -160,6 +168,9 @@ impl PoolUI {
                 selected_memo: 0,
                 env_vars: Vec::new(),
                 selected_env_var: 0,
+                show_env_vars: false,
+                env_edit_mode: None,
+                env_edit_buffer: String::new(),
             },
         })
     }
@@ -168,18 +179,32 @@ impl PoolUI {
     fn load_env_vars_for_type(&mut self) {
         let role_name = AGENT_ROLES[self.create_state.selected_type].0;
         
+        // Get last saved env vars
+        let last_env_vars = self.manager.get_last_env_vars();
+        let last_env_map: std::collections::HashMap<String, String> = last_env_vars.into_iter().collect();
+        
         // Find the env var template for this role
-        if let Some((_, vars)) = ENV_VAR_TEMPLATES.iter().find(|(name, _)| *name == role_name) {
-            self.create_state.env_vars = vars.iter()
+        let template_vars = if let Some((_, vars)) = ENV_VAR_TEMPLATES.iter().find(|(name, _)| *name == role_name) {
+            vars.iter()
                 .map(|(key, value)| (key.to_string(), value.to_string()))
-                .collect();
+                .collect::<Vec<_>>()
         } else {
             // Default env vars if no template found
-            self.create_state.env_vars = vec![
+            vec![
                 ("GIT_REPO".to_string(), "https://github.com/username/project.git".to_string()),
                 ("GIT_BRANCH".to_string(), "main".to_string()),
-            ];
-        }
+            ]
+        };
+        
+        // Merge template with last saved values
+        // Use saved values for keys that exist in both, add template-only keys
+        self.create_state.env_vars = template_vars.into_iter()
+            .map(|(key, default_value)| {
+                let value = last_env_map.get(&key).cloned().unwrap_or(default_value);
+                (key, value)
+            })
+            .collect();
+        
         self.create_state.selected_env_var = 0;
     }
     
@@ -310,19 +335,24 @@ impl PoolUI {
                         match key_event.code {
                             KeyCode::Esc => break,
                             KeyCode::Char('q') => break,
-                            KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('w') => self.move_selection_up(),
-                            KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('s') => self.move_selection_down(),
+                            KeyCode::Up | KeyCode::Char('w') => self.move_selection_up(),
+                            KeyCode::Down | KeyCode::Char('s') => self.move_selection_down(),
                             KeyCode::Enter => self.handle_attach().await?,
                             KeyCode::Char(' ') => self.handle_toggle().await?,
                             KeyCode::Char('a') => self.handle_attach().await?,
                             KeyCode::Char('n') => {
                                 self.mode = UIMode::CreateNew;
                                 self.create_state.generated_name = Self::generate_agent_name();
+                                self.create_state.name_edit_mode = false;
+                                self.create_state.name_edit_buffer.clear();
                                 self.create_state.selected_type = 0;
                                 self.create_state.selected_field = CreateField::Name;
                                 self.create_state.show_advanced = false;
                                 self.create_state.selected_advanced_option = 0;
                                 self.create_state.selected_memo = 0;
+                                self.create_state.show_env_vars = false;
+                                self.create_state.env_edit_mode = None;
+                                self.create_state.env_edit_buffer.clear();
                                 self.load_env_vars_for_type();
                             }
                             KeyCode::Char('r') => self.refresh().await?,
@@ -333,13 +363,74 @@ impl PoolUI {
                         }
                     }
                     UIMode::CreateNew => {
+                        // Check if we're in name edit mode
+                        if self.create_state.name_edit_mode {
+                            match key_event.code {
+                                KeyCode::Esc => {
+                                    // Cancel editing
+                                    self.create_state.name_edit_mode = false;
+                                    self.create_state.name_edit_buffer.clear();
+                                }
+                                KeyCode::Enter => {
+                                    // Save the edited name
+                                    self.create_state.generated_name = self.create_state.name_edit_buffer.clone();
+                                    self.create_state.name_edit_mode = false;
+                                    self.create_state.name_edit_buffer.clear();
+                                }
+                                KeyCode::Backspace => {
+                                    self.create_state.name_edit_buffer.pop();
+                                }
+                                KeyCode::Char(c) => {
+                                    self.create_state.name_edit_buffer.push(c);
+                                }
+                                _ => {}
+                            }
+                            continue; // Skip normal key handling when in edit mode
+                        }
+                        
+                        // Check if we're in env edit mode
+                        if let Some(edit_index) = self.create_state.env_edit_mode {
+                            match key_event.code {
+                                KeyCode::Esc => {
+                                    // Cancel editing
+                                    self.create_state.env_edit_mode = None;
+                                    self.create_state.env_edit_buffer.clear();
+                                }
+                                KeyCode::Enter => {
+                                    // Save the edited value
+                                    if let Some((_, value)) = self.create_state.env_vars.get_mut(edit_index) {
+                                        *value = self.create_state.env_edit_buffer.clone();
+                                    }
+                                    self.create_state.env_edit_mode = None;
+                                    self.create_state.env_edit_buffer.clear();
+                                }
+                                KeyCode::Backspace => {
+                                    self.create_state.env_edit_buffer.pop();
+                                }
+                                KeyCode::Char(c) => {
+                                    self.create_state.env_edit_buffer.push(c);
+                                }
+                                _ => {}
+                            }
+                            continue; // Skip normal key handling when in edit mode
+                        }
+                        
                         match key_event.code {
                             KeyCode::Esc => break,
                             KeyCode::Char('q') => {
                                 // Go back to list mode
                                 self.mode = UIMode::List;
+                                self.create_state.name_edit_mode = false;
+                                self.create_state.name_edit_buffer.clear();
+                                self.create_state.env_edit_mode = None;
+                                self.create_state.env_edit_buffer.clear();
                             }
                             KeyCode::Tab => {
+                                // Clear edit modes if active
+                                self.create_state.name_edit_mode = false;
+                                self.create_state.name_edit_buffer.clear();
+                                self.create_state.env_edit_mode = None;
+                                self.create_state.env_edit_buffer.clear();
                                 // Move to next field
                                 self.create_state.selected_field = match self.create_state.selected_field {
                                     CreateField::Name => CreateField::Type,
@@ -351,6 +442,11 @@ impl PoolUI {
                                 };
                             }
                             KeyCode::BackTab => {
+                                // Clear edit modes if active
+                                self.create_state.name_edit_mode = false;
+                                self.create_state.name_edit_buffer.clear();
+                                self.create_state.env_edit_mode = None;
+                                self.create_state.env_edit_buffer.clear();
                                 // Move to previous field
                                 self.create_state.selected_field = match self.create_state.selected_field {
                                     CreateField::Name => CreateField::CreateButton,
@@ -364,27 +460,13 @@ impl PoolUI {
                             KeyCode::Enter => {
                                 match self.create_state.selected_field {
                                     CreateField::Name => {
-                                        // Regenerate name
-                                        self.create_state.generated_name = Self::generate_agent_name();
+                                        // Enter edit mode for name
+                                        self.create_state.name_edit_mode = true;
+                                        self.create_state.name_edit_buffer = self.create_state.generated_name.clone();
                                     }
                                     CreateField::EnvVars => {
-                                        // Cycle through predefined values for the selected env var
-                                        if let Some((key, value)) = self.create_state.env_vars.get_mut(self.create_state.selected_env_var) {
-                                            if key == "GIT_REPO" {
-                                                // Cycle through repo suggestions
-                                                let current_index = REPO_SUGGESTIONS.iter().position(|&s| s == value).unwrap_or(0);
-                                                let next_index = (current_index + 1) % REPO_SUGGESTIONS.len();
-                                                *value = REPO_SUGGESTIONS[next_index].to_string();
-                                            } else if key == "GIT_BRANCH" {
-                                                // Cycle through common branch names
-                                                *value = match value.as_str() {
-                                                    "main" => "master".to_string(),
-                                                    "master" => "develop".to_string(),
-                                                    "develop" => "feature/dev".to_string(),
-                                                    _ => "main".to_string(),
-                                                };
-                                            }
-                                        }
+                                        // Toggle env vars display
+                                        self.create_state.show_env_vars = !self.create_state.show_env_vars;
                                     }
                                     CreateField::Advanced => {
                                         // Toggle advanced options
@@ -397,18 +479,24 @@ impl PoolUI {
                                     _ => {}
                                 }
                             }
-                            KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('w') => {
+                            KeyCode::Up | KeyCode::Char('w') => {
                                 match self.create_state.selected_field {
                                     CreateField::EnvVars => {
                                         // Navigate up in env vars list
                                         if self.create_state.selected_env_var > 0 {
                                             self.create_state.selected_env_var -= 1;
+                                        } else {
+                                            // At first item, move to previous field
+                                            self.create_state.selected_field = CreateField::Memo;
                                         }
                                     }
                                     CreateField::Advanced if self.create_state.show_advanced => {
                                         // Navigate up in advanced options
                                         if self.create_state.selected_advanced_option > 0 {
                                             self.create_state.selected_advanced_option -= 1;
+                                        } else {
+                                            // At first option, move to previous field
+                                            self.create_state.selected_field = CreateField::EnvVars;
                                         }
                                     }
                                     _ => {
@@ -424,18 +512,24 @@ impl PoolUI {
                                     }
                                 }
                             }
-                            KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('s') => {
+                            KeyCode::Down | KeyCode::Char('s') => {
                                 match self.create_state.selected_field {
                                     CreateField::EnvVars => {
                                         // Navigate down in env vars list
                                         if self.create_state.selected_env_var < self.create_state.env_vars.len().saturating_sub(1) {
                                             self.create_state.selected_env_var += 1;
+                                        } else {
+                                            // At last item, move to next field
+                                            self.create_state.selected_field = CreateField::Advanced;
                                         }
                                     }
                                     CreateField::Advanced if self.create_state.show_advanced => {
                                         // Navigate down in advanced options
                                         if self.create_state.selected_advanced_option < ADVANCED_OPTIONS.len() - 1 {
                                             self.create_state.selected_advanced_option += 1;
+                                        } else {
+                                            // At last option, move to next field
+                                            self.create_state.selected_field = CreateField::CreateButton;
                                         }
                                     }
                                     _ => {
@@ -499,6 +593,45 @@ impl PoolUI {
                                         if self.create_state.selected_advanced_option < ADVANCED_OPTIONS.len() - 1 {
                                             self.create_state.selected_advanced_option += 1;
                                         }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            KeyCode::Char('e') => {
+                                // Edit environment variable (only if showing env vars)
+                                if self.create_state.selected_field == CreateField::EnvVars 
+                                    && self.create_state.show_env_vars
+                                    && self.create_state.selected_env_var < self.create_state.env_vars.len() {
+                                    self.create_state.env_edit_mode = Some(self.create_state.selected_env_var);
+                                    // Initialize edit buffer with current value
+                                    if let Some((_, value)) = self.create_state.env_vars.get(self.create_state.selected_env_var) {
+                                        self.create_state.env_edit_buffer = value.clone();
+                                    }
+                                }
+                            }
+                            KeyCode::Char('r') => {
+                                // Handle 'r' based on current field
+                                match self.create_state.selected_field {
+                                    CreateField::Name => {
+                                        // Regenerate name
+                                        self.create_state.generated_name = Self::generate_agent_name();
+                                    }
+                                    CreateField::EnvVars => {
+                                        // Reset env vars to defaults (without saved values)
+                                        let role_name = AGENT_ROLES[self.create_state.selected_type].0;
+                                    // Find the env var template for this role
+                                    if let Some((_, vars)) = ENV_VAR_TEMPLATES.iter().find(|(name, _)| *name == role_name) {
+                                        self.create_state.env_vars = vars.iter()
+                                            .map(|(key, value)| (key.to_string(), value.to_string()))
+                                            .collect();
+                                    } else {
+                                        // Default env vars if no template found
+                                        self.create_state.env_vars = vec![
+                                            ("GIT_REPO".to_string(), "https://github.com/username/project.git".to_string()),
+                                            ("GIT_BRANCH".to_string(), "main".to_string()),
+                                        ];
+                                    }
+                                        self.message = Some("Reset env vars to defaults".to_string());
                                     }
                                     _ => {}
                                 }
@@ -630,6 +763,52 @@ impl PoolUI {
             Print(Self::margin_str(margin)),
             ResetColor
         )?;
+        
+        // Column headers
+        line_num += 1;
+        Self::debug_line_number(stdout, line_num)?;
+        execute!(
+            stdout,
+            Print(Self::margin_str(margin)),
+            SetForegroundColor(Color::DarkGrey),
+            Print("│ "),
+            SetForegroundColor(Color::DarkGrey),
+            SetAttribute(Attribute::Bold),
+            Print("  NAME"),
+            Print(" ".repeat(25)), // Space for name column
+            Print("STATUS"),
+            Print(" ".repeat(6)),  // Space after status
+            Print("DESCRIPTION • CREATED"),
+            ResetColor
+        )?;
+        
+        // Calculate padding for the header row
+        let header_text = "  NAME                         STATUS      DESCRIPTION • CREATED";
+        let header_len = UnicodeWidthStr::width(header_text);
+        let header_padding = inner_width.saturating_sub(header_len + 4); // 4 for "│ " and " │"
+        
+        execute!(
+            stdout,
+            Print(" ".repeat(header_padding)),
+            SetForegroundColor(Color::DarkGrey),
+            Print(" │"),
+            Print(Self::margin_str(margin)),
+            ResetColor
+        )?;
+        
+        // Separator after headers
+        line_num += 1;
+        Self::debug_line_number(stdout, line_num)?;
+        execute!(
+            stdout,
+            Print(Self::margin_str(margin)),
+            SetForegroundColor(Color::DarkGrey),
+            Print("├"),
+            Print("─".repeat(inner_width.saturating_sub(2))),
+            Print("┤"),
+            Print(Self::margin_str(margin)),
+            ResetColor
+        )?;
 
         // Agent list
         for (index, agent) in agents.iter().enumerate() {
@@ -642,11 +821,17 @@ impl PoolUI {
                 AgentStatus::Starting => ("STARTING", Color::Yellow),
             };
             
-            let memo = if let Some(current_task) = &agent.metadata.tasks.current {
-                format!("working on: {}", truncate_string(current_task, 40))
+            // Show description and created_at
+            let description = if agent.metadata.agent.description.is_empty() {
+                agent.metadata.agent.agent_type.clone()
             } else {
-                "idle".to_string()
+                agent.metadata.agent.description.clone()
             };
+            
+            // Format created_at as relative time
+            let created_at = format_relative_time(&agent.metadata.agent.created_at);
+            
+            let memo = format!("{} • {}", truncate_string(&description, 40), created_at);
             
             line_num += 1;
             Self::debug_line_number(stdout, line_num)?;
@@ -852,7 +1037,8 @@ impl PoolUI {
         
         // Calculate actual display width: "│ " (3) + label (padded to 8) + ": " (2) + value + optional(hint+4)
         let label_display_width = 8; // Labels are padded to 8 chars
-        let used_len = 3 + label_display_width + 2 + UnicodeWidthStr::width(value) + if is_selected { UnicodeWidthStr::width(hint) + 4 } else { 0 };
+        let value_display_width = UnicodeWidthStr::width(value);
+        let used_len = 3 + label_display_width + 2 + value_display_width + if is_selected { UnicodeWidthStr::width(hint) + 4 } else { 0 };
         execute!(
             stdout,
             Print(" ".repeat(inner_width.saturating_sub(used_len))),
@@ -923,12 +1109,22 @@ impl PoolUI {
         )?;
         
         // Name field
+        let name_display = if self.create_state.name_edit_mode {
+            format!("{}█", self.create_state.name_edit_buffer)
+        } else {
+            self.create_state.generated_name.clone()
+        };
+        let name_hint = if self.create_state.name_edit_mode {
+            "[Enter to save, Esc to cancel]"
+        } else {
+            "[Enter to edit, 'r' to regenerate]"
+        };
         line_num = self.draw_form_field(
             stdout,
             "Name",
-            &self.create_state.generated_name,
+            &name_display,
             self.create_state.selected_field == CreateField::Name,
-            "[Enter to regenerate]",
+            name_hint,
             inner_width,
             margin,
             line_num
@@ -951,10 +1147,10 @@ impl PoolUI {
             line_num
         )?;
         
-        // Memo field
+        // Description field
         line_num = self.draw_form_field(
             stdout,
-            "Purpose",
+            "Tag",
             MEMO_OPTIONS[self.create_state.selected_memo],
             self.create_state.selected_field == CreateField::Memo,
             "[←→ to change]",
@@ -964,13 +1160,42 @@ impl PoolUI {
         )?;
         
         // Environment Variables field
+        let env_hint = if self.create_state.env_edit_mode.is_some() {
+            "[Enter to save, Esc to cancel]"
+        } else if self.create_state.show_env_vars {
+            "[↑↓ to select, 'e' to edit, 'r' to reset]"
+        } else {
+            "[Enter to expand]"
+        };
+        
         let env_display = if self.create_state.env_vars.is_empty() {
             "No environment variables".to_string()
-        } else if self.create_state.selected_env_var < self.create_state.env_vars.len() {
-            let (key, value) = &self.create_state.env_vars[self.create_state.selected_env_var];
-            format!("{} = {}", key, value)
+        } else if self.create_state.show_env_vars {
+            // Show selected env var when expanded
+            if self.create_state.selected_env_var < self.create_state.env_vars.len() {
+                let (key, value) = &self.create_state.env_vars[self.create_state.selected_env_var];
+                let raw_display = format!("▼ {} = {}", key, value);
+                
+                // Calculate available width for the value
+                let label_section = 3 + 8 + 2; // "│ " + "Env Vars" + ": "
+                let hint_section = if self.create_state.selected_field == CreateField::EnvVars { 
+                    2 + UnicodeWidthStr::width(env_hint) + 2 // "  " + hint + " │"
+                } else { 
+                    2 // just " │"
+                };
+                let available_width = inner_width.saturating_sub(label_section + hint_section);
+                
+                // Truncate if needed
+                if UnicodeWidthStr::width(raw_display.as_str()) > available_width {
+                    truncate_string(&raw_display, available_width)
+                } else {
+                    raw_display
+                }
+            } else {
+                "▼ Environment Variables".to_string()
+            }
         } else {
-            "No environment variables".to_string()
+            format!("▶ Environment Variables ({})", self.create_state.env_vars.len())
         };
         
         line_num = self.draw_form_field(
@@ -978,14 +1203,14 @@ impl PoolUI {
             "Env Vars",
             &env_display,
             self.create_state.selected_field == CreateField::EnvVars,
-            "[↑↓ to select, Enter to cycle values]",
+            env_hint,
             inner_width,
             margin,
             line_num
         )?;
         
-        // Show all env vars if this field is selected
-        if self.create_state.selected_field == CreateField::EnvVars && !self.create_state.env_vars.is_empty() {
+        // Show all env vars if expanded
+        if self.create_state.show_env_vars && !self.create_state.env_vars.is_empty() {
             for (i, (key, value)) in self.create_state.env_vars.iter().enumerate() {
                 line_num += 1;
                 Self::debug_line_number(stdout, line_num)?;
@@ -1012,12 +1237,33 @@ impl PoolUI {
                     )?;
                 }
                 
+                // Show edit buffer if we're editing this var
+                let display_value = if self.create_state.env_edit_mode == Some(i) {
+                    format!("{}█", self.create_state.env_edit_buffer)  // Show cursor
+                } else {
+                    value.clone()
+                };
+                
+                // Calculate available width for the env var line
+                // Format: "│           ▶ KEY              = VALUE │"
+                let prefix_width = 13; // "│           ▶ " or "│             "
+                let key_width = 15; // key is padded to 15
+                let equals_width = 3; // " = "
+                let suffix_width = 2; // " │"
+                let available_value_width = inner_width.saturating_sub(prefix_width + key_width + equals_width + suffix_width);
+                
+                let truncated_value = if UnicodeWidthStr::width(display_value.as_str()) > available_value_width {
+                    truncate_string(&display_value, available_value_width)
+                } else {
+                    display_value.clone()
+                };
+                
                 execute!(
                     stdout,
-                    Print(format!("{:<15} = {}", key, value))
+                    Print(format!("{:<15} = {}", key, truncated_value))
                 )?;
                 
-                let var_len = 18 + UnicodeWidthStr::width(key.as_str()) + UnicodeWidthStr::width(value.as_str()) + 10;
+                let var_len = 2 + prefix_width + key_width + equals_width + UnicodeWidthStr::width(truncated_value.as_str());
                 execute!(
                     stdout,
                     Print(" ".repeat(inner_width.saturating_sub(var_len))),
@@ -1049,12 +1295,17 @@ impl PoolUI {
         } else {
             "▶ Advanced Options".to_string()
         };
+        let advanced_hint = if self.create_state.show_advanced {
+            "[↑↓ to select]"
+        } else {
+            "[Enter to expand]"
+        };
         line_num = self.draw_form_field(
             stdout,
             "Config",
             &advanced_text,
             self.create_state.selected_field == CreateField::Advanced,
-            "[Enter to toggle]",
+            advanced_hint,
             inner_width,
             margin,
             line_num
@@ -1093,7 +1344,7 @@ impl PoolUI {
                     Print(format!("{:<20} {}", option_key, option_desc))
                 )?;
                 
-                let option_len = 28 + UnicodeWidthStr::width(*option_key) + UnicodeWidthStr::width(*option_desc);
+                let option_len = 32+ UnicodeWidthStr::width(*option_desc);
                 execute!(
                     stdout,
                     Print(" ".repeat(inner_width.saturating_sub(option_len))),
@@ -1162,7 +1413,7 @@ impl PoolUI {
         )?;
         
         // Help text - properly centered
-        let help_text = "Navigate: ↑↓/jk/ws or Tab • Within fields: ←→/ad • Enter to select • q to cancel";
+        let help_text = "Navigate: ↑↓/ws or Tab • Within fields: ←→/ad • Enter to select • q to cancel";
         let help_width = UnicodeWidthStr::width(help_text);
         let help_left_padding = (inner_width.saturating_sub(help_width + 4)) / 2; // +4 for "│ " and " │"
         let help_right_padding = inner_width.saturating_sub(help_width + 4 + help_left_padding);
@@ -1253,7 +1504,7 @@ impl PoolUI {
         // Controls
         let controls = match self.mode {
             UIMode::List => vec![
-                ("↑↓/jk/ws", "Navigate"),
+                ("↑↓/ws", "Navigate"),
                 ("Enter/a", "Attach"),
                 ("Space", "Start/Stop"),
                 ("n", "New"),
@@ -1422,6 +1673,14 @@ impl PoolUI {
         // Create the agent with the selected role as template
         match self.manager.create_agent(name.clone(), Some(agent_role.to_string())).await {
             Ok(_) => {
+                // Update agent description with selected memo
+                if let Ok(agent) = self.manager.get_agent_mut(&name) {
+                    agent.metadata.agent.description = MEMO_OPTIONS[self.create_state.selected_memo].to_string();
+                    if let Err(e) = agent.save().await {
+                        tracing::warn!("Failed to save agent description: {}", e);
+                    }
+                }
+                
                 // Save environment variables to .env file
                 if !self.create_state.env_vars.is_empty() {
                     if let Ok(agent) = self.manager.get_agent_mut(&name) {
@@ -1434,6 +1693,12 @@ impl PoolUI {
                         if let Err(e) = tokio::fs::write(&env_file_path, env_content).await {
                             self.message = Some(format!("Agent created but failed to save env vars: {}", e));
                         }
+                    }
+                    
+                    // Save env vars as last used for future agents
+                    if let Err(e) = self.manager.update_last_env_vars(self.create_state.env_vars.clone()).await {
+                        // Don't fail the agent creation, just log the error
+                        tracing::warn!("Failed to save last env vars: {}", e);
                     }
                 }
                 
@@ -1470,5 +1735,30 @@ fn truncate_string(s: &str, max_len: usize) -> String {
         s.to_string()
     } else {
         format!("{}...", &s[..max_len-3])
+    }
+}
+
+fn format_relative_time(created_at: &chrono::DateTime<chrono::Utc>) -> String {
+    let now = chrono::Utc::now();
+    let duration = now.signed_duration_since(*created_at);
+    
+    if duration.num_seconds() < 60 {
+        "just now".to_string()
+    } else if duration.num_minutes() < 60 {
+        let mins = duration.num_minutes();
+        format!("{} min{} ago", mins, if mins == 1 { "" } else { "s" })
+    } else if duration.num_hours() < 24 {
+        let hours = duration.num_hours();
+        format!("{} hour{} ago", hours, if hours == 1 { "" } else { "s" })
+    } else if duration.num_days() < 7 {
+        let days = duration.num_days();
+        if days == 1 {
+            "yesterday".to_string()
+        } else {
+            format!("{} days ago", days)
+        }
+    } else {
+        // Show actual date for older items
+        created_at.format("%b %d, %I:%M%p").to_string()
     }
 }

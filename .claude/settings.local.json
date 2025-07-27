@@ -30,7 +30,8 @@
       "Bash(./auto_ultimate_test.sh:*)",
       "Bash(tmux new-session:*)",
       "Bash(tmux display-message:*)",
-      "Bash(tmux list-panes:*)"
+      "Bash(tmux list-panes:*)",
+      "Bash(touch:*)"
     ],
     "deny": []
   }

@@ -121,14 +121,38 @@ impl Agent {
         
         // Change to workspace and launch claude with nvm
         let workspace = self.get_workspace_dir();
-        let repo_path = std::env::var("AANY_REPO_PATH")
-            .expect("AANY_REPO_PATH environment variable must be set");
-        let claude_wrapper = std::env::var("AANY_CLAUDE_WRAPPER")
-            .unwrap_or_else(|_| format!("{}/aany-tmux/claude-with-return.sh", repo_path));
-        let startup_command = if std::path::Path::new(&claude_wrapper).exists() {
-            format!("cd {} && git clone {} . && nvm use 22 && {}", workspace.display(), repo_path, claude_wrapper)
+        
+        // Load environment variables from .env file if it exists
+        let env_file = self.get_agent_dir().join(".env");
+        let git_repo = if env_file.exists() {
+            // Read .env file and look for GIT_REPO
+            let env_content = std::fs::read_to_string(&env_file).unwrap_or_default();
+            env_content.lines()
+                .find(|line| line.starts_with("GIT_REPO="))
+                .and_then(|line| line.strip_prefix("GIT_REPO="))
+                .filter(|s| !s.is_empty() && !s.contains("Local repository"))
+                .map(|s| s.to_string())
         } else {
-            format!("cd {} && git clone {} . && nvm use 22 && claude", workspace.display(), repo_path)
+            None
+        };
+        
+        // Try to find claude wrapper script
+        let claude_wrapper = self.find_script("claude-with-return.sh", "AANY_CLAUDE_WRAPPER");
+        
+        let startup_command = if let Some(git_repo) = git_repo {
+            // If GIT_REPO is set, clone that repository
+            if let Some(wrapper) = &claude_wrapper {
+                format!("cd {} && git clone {} . && nvm use 22 && {}", workspace.display(), git_repo, wrapper)
+            } else {
+                format!("cd {} && git clone {} . && nvm use 22 && claude", workspace.display(), git_repo)
+            }
+        } else {
+            // Default behavior - just change to workspace and start claude
+            if let Some(wrapper) = &claude_wrapper {
+                format!("cd {} && nvm use 22 && {}", workspace.display(), wrapper)
+            } else {
+                format!("cd {} && nvm use 22 && claude", workspace.display())
+            }
         };
         
         // Log the command for debugging
@@ -153,19 +177,15 @@ impl Agent {
             let hub_url = std::env::var("AANY_HUB_URL").unwrap_or_else(|_| "localhost:50052".to_string());
             
             // Start all loggers for comprehensive logging
-            let repo_path = std::env::var("AANY_REPO_PATH")
-                .expect("AANY_REPO_PATH environment variable must be set");
-            let logger_script = std::env::var("AANY_TMUX_LOGGER")
-                .unwrap_or_else(|_| format!("{}/aany-tmux/tmux-logger.sh", repo_path));
-            let interaction_logger_script = std::env::var("AANY_INTERACTION_LOGGER")
-                .unwrap_or_else(|_| format!("{}/aany-tmux/tmux-interaction-logger.sh", repo_path));
-            let screenshot_logger_script = std::env::var("AANY_SCREENSHOT_LOGGER")
-                .unwrap_or_else(|_| format!("{}/aany-tmux/tmux-screenshot-rotating-logger.sh", repo_path));
+            // Try to find logger scripts
+            let logger_script = self.find_script("tmux-logger.sh", "AANY_TMUX_LOGGER");
+            let interaction_logger_script = self.find_script("tmux-interaction-logger.sh", "AANY_INTERACTION_LOGGER");
+            let screenshot_logger_script = self.find_script("tmux-screenshot-rotating-logger.sh", "AANY_SCREENSHOT_LOGGER");
             
             // Start the original tmux logger
-            if std::path::Path::new(logger_script).exists() {
+            if let Some(script) = &logger_script {
                 Command::new("bash")
-                    .args(&[logger_script, session_name, &self.name])
+                    .args(&[script, session_name, &self.name])
                     .env("AANY_HUB_URL", &hub_url)
                     .env("GRPC_ENABLE_FORK_SUPPORT", "1")
                     .env("GRPC_POLL_STRATEGY", "poll")
@@ -173,12 +193,14 @@ impl Agent {
                     .stderr(std::process::Stdio::null())
                     .spawn()
                     .ok();
+            } else {
+                tracing::warn!("tmux-logger.sh not found, logging disabled");
             }
             
             // Start the interaction logger to capture all screen and user input
-            if std::path::Path::new(interaction_logger_script).exists() {
+            if let Some(script) = &interaction_logger_script {
                 Command::new("bash")
-                    .args(&[interaction_logger_script, session_name, &self.name])
+                    .args(&[script, session_name, &self.name])
                     .env("AANY_HUB_URL", &hub_url)
                     .env("GRPC_ENABLE_FORK_SUPPORT", "1")
                     .env("GRPC_POLL_STRATEGY", "poll")
@@ -186,16 +208,20 @@ impl Agent {
                     .stderr(std::process::Stdio::null())
                     .spawn()
                     .ok();
+            } else {
+                tracing::warn!("tmux-interaction-logger.sh not found, interaction logging disabled");
             }
             
             // Start the screenshot logger with 5s interval and 5 minute file rotation
-            if std::path::Path::new(screenshot_logger_script).exists() {
+            if let Some(script) = &screenshot_logger_script {
                 Command::new("bash")
-                    .args(&[screenshot_logger_script, session_name, &self.name, "5", "300"])
+                    .args(&[script, session_name, &self.name, "5", "300"])
                     .stdout(std::process::Stdio::null())
                     .stderr(std::process::Stdio::null())
                     .spawn()
                     .ok();
+            } else {
+                tracing::warn!("tmux-screenshot-rotating-logger.sh not found, screenshot logging disabled");
             }
         }
         
@@ -314,6 +340,72 @@ impl Agent {
     /// Get workspace directory path
     pub fn get_workspace_dir(&self) -> PathBuf {
         self.get_agent_dir().join("workspace")
+    }
+    
+    /// Find a script file using multiple strategies
+    fn find_script(&self, script_name: &str, env_var: &str) -> Option<String> {
+        // 1. Check environment variable override
+        if let Ok(path) = std::env::var(env_var) {
+            if std::path::Path::new(&path).exists() {
+                return Some(path);
+            }
+        }
+        
+        // 2. Check AANY_REPO_PATH if available
+        if let Ok(repo_path) = std::env::var("AANY_REPO_PATH") {
+            let script_path = format!("{}/aany-tmux/{}", repo_path, script_name);
+            if std::path::Path::new(&script_path).exists() {
+                return Some(script_path);
+            }
+        }
+        
+        // 3. Try to find in PATH using which command
+        if let Ok(output) = Command::new("which").arg(script_name).output() {
+            if output.status.success() {
+                if let Ok(path) = String::from_utf8(output.stdout) {
+                    let path = path.trim();
+                    if !path.is_empty() {
+                        return Some(path.to_string());
+                    }
+                }
+            }
+        }
+        
+        // 4. Check common installation locations
+        let common_paths = [
+            format!("/usr/local/bin/{}", script_name),
+            format!("/opt/homebrew/bin/{}", script_name),
+            format!("{}/.local/bin/{}", std::env::var("HOME").unwrap_or_default(), script_name),
+            format!("{}/bin/{}", std::env::var("HOME").unwrap_or_default(), script_name),
+        ];
+        
+        for path in &common_paths {
+            if std::path::Path::new(path).exists() {
+                return Some(path.clone());
+            }
+        }
+        
+        // 5. Try relative to current executable
+        if let Ok(exe_path) = std::env::current_exe() {
+            if let Some(exe_dir) = exe_path.parent() {
+                // Check in same directory
+                let same_dir = exe_dir.join(script_name);
+                if same_dir.exists() {
+                    return Some(same_dir.to_string_lossy().to_string());
+                }
+                
+                // Check in ../aany-tmux/
+                if let Some(parent) = exe_dir.parent() {
+                    let tmux_dir = parent.join("aany-tmux").join(script_name);
+                    if tmux_dir.exists() {
+                        return Some(tmux_dir.to_string_lossy().to_string());
+                    }
+                }
+            }
+        }
+        
+        tracing::warn!("Could not find script: {}", script_name);
+        None
     }
     
     /// Update task information

@@ -166,9 +166,33 @@ impl PoolManager {
             .ok_or_else(|| PoolError::AgentNotFound(name.to_string()))
     }
     
-    /// List all agents
+    /// Save the pool configuration
+    pub async fn save_config(&self) -> PoolResult<()> {
+        let config_path = self.root_path.join(".pool.yaml");
+        let content = serde_yaml::to_string(&self.config)?;
+        fs::write(&config_path, content).await?;
+        Ok(())
+    }
+    
+    /// Update last used environment variables
+    pub async fn update_last_env_vars(&mut self, env_vars: Vec<(String, String)>) -> PoolResult<()> {
+        self.config.defaults.last_env_vars = env_vars.into_iter().collect();
+        self.save_config().await?;
+        Ok(())
+    }
+    
+    /// Get last used environment variables
+    pub fn get_last_env_vars(&self) -> Vec<(String, String)> {
+        self.config.defaults.last_env_vars.iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
+    }
+    
+    /// List all agents sorted by created_at (newest first)
     pub fn list_agents(&self) -> Vec<&Agent> {
-        self.agents.values().collect()
+        let mut agents: Vec<&Agent> = self.agents.values().collect();
+        agents.sort_by(|a, b| b.metadata.agent.created_at.cmp(&a.metadata.agent.created_at));
+        agents
     }
     
     /// Delete an agent
